@@ -221,7 +221,7 @@ class GameLoop {
 
 // == Khởi chạy ==
 const boneHead = new Vector3(-0.0456970781, -0.004478302, -0.0200432576);
-const recoil = new Vector3(0.003, -0.001, 0.002);
+const recoil = new Vector3(0.0, 0.0, 0.0);
 
 const aimSystem = new AimLockDragStable();
 const loop = new GameLoop();
