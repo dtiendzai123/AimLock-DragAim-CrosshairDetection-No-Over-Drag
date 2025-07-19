@@ -225,7 +225,10 @@ const recoil = new Vector3(0.0, 0.0, 0.0);
 
 const aimSystem = new AimLockDragStable();
 const loop = new GameLoop();
-
+const GamePackages = {
+  GamePackage1: "com.dts.freefireth",
+  GamePackage2: "com.dts.freefiremax"
+};
 loop.start(() => {
   aimSystem.tick(boneHead, recoil);
 });
