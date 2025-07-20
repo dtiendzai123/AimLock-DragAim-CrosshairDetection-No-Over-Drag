@@ -223,13 +223,16 @@ class GameLoop {
 }
 
 // == Khởi chạy ==
-const headOffset = new Vector3(-0.04089227, 0.00907892, 0.02748467); // Hoặc lấy từ this.config.headOffset
+const headOffset = new Vector3(-0.04089227, 0.00907892, 0.02748467);
 
-const boneHead = new Vector3(
-  enemy.x + headOffset.x,
-  enemy.y + headOffset.y,
-  enemy.z + headOffset.z
-);
+for (const enemy of enemies) {
+  const boneHead = new Vector3(
+    enemy.x + headOffset.x,
+    enemy.y + headOffset.y,
+    enemy.z + headOffset.z
+  );
+
+  
 
 // Snap instantly
 
