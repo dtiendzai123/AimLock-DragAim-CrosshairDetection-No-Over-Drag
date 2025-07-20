@@ -113,7 +113,9 @@ function dragTowardBoneHead(currentAim, boneHead, maxStep = 0.05) {
 
   return currentAim;
 }
-
+function dragTowardBoneHead(currentAim, boneHead) {
+  return currentAim.set(boneHead.x, boneHead.y, boneHead.z);
+}
 // == AimLock Engine ==
 class AimLockDragStable {
   constructor() {
@@ -220,6 +222,16 @@ class GameLoop {
 }
 
 // == Khởi chạy ==
+const headOffset = new Vector3(-0.04089227, 0.00907892, 0.02748467); // Hoặc lấy từ this.config.headOffset
+
+const boneHead = new Vector3(
+  enemy.x + headOffset.x,
+  enemy.y + headOffset.y,
+  enemy.z + headOffset.z
+);
+
+// Snap instantly
+dragTowardBoneHead(currentAim, boneHead);
 const boneHead = new Vector3(-0.0456970781, -0.004478302, -0.0200432576);
 const recoil = new Vector3(0.0, 0.0, 0.0);
 
