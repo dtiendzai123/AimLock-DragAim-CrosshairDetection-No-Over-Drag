@@ -124,96 +124,65 @@ class AimLockDragStable {
       y: new KalmanFilter(0.03, 0.00001),
       z: new KalmanFilter(0.03, 0.00001)
     };
-
-    this.prevPos = new Vector3();
-    this.velocity = new Vector3();
     this.currentAim = new Vector3();
     this.trackedHead = new Vector3();
     this.compensated = new Vector3();
-
-    this.lastUpdate = Date.now();
-    this.isFirstUpdate = true;
-
-    this.adaptiveStep = 0.05;
-    this.minStep = 0.01;
-    this.maxStep = 0.1;
-    this.velocityInfluence = 0.3;
   }
 
   updateBoneHeadTracking(pos) {
-    const now = Date.now();
-    const dt = (now - this.lastUpdate) / 1000;
-
-    if (!this.isFirstUpdate && dt > 0 && dt < 0.1) {
-      this.velocity.set(
-        (pos.x - this.prevPos.x) / dt,
-        (pos.y - this.prevPos.y) / dt,
-        (pos.z - this.prevPos.z) / dt
-      );
-
-      const velocityMag = this.velocity.length();
-      this.adaptiveStep = Math.max(this.minStep, Math.min(this.maxStep, this.minStep + velocityMag * this.velocityInfluence));
-    }
-
-    this.prevPos.set(pos.x, pos.y, pos.z);
-    this.lastUpdate = now;
-    this.isFirstUpdate = false;
-
     this.trackedHead.set(
       this.kalman.x.filter(pos.x),
       this.kalman.y.filter(pos.y),
       this.kalman.z.filter(pos.z)
     );
-
     return this.trackedHead;
   }
 
- tick(boneHead, recoil = Vector3.zero()) {
-  if (!CrosshairDetector.isRed() && !CrosshairDetector.isHeadshot()) return;
+  tick(boneHead, recoil = Vector3.zero()) {
+    // Luôn lock bất kể crosshair màu gì (nếu muốn lọc thêm thì bật dòng dưới)
+    // if (!CrosshairDetector.isRed() && !CrosshairDetector.isHeadshot()) return;
 
-  const trackedHead = this.updateBoneHeadTracking(boneHead);
-
-  this.compensated.set(
-    trackedHead.x - recoil.x,
-    trackedHead.y - recoil.y,
-    trackedHead.z - recoil.z
-  );
-
-  // Snap instantly
-  dragTowardBoneHead(this.currentAim, this.compensated);
-  this.setCrosshair(this.currentAim);
-}
+    const tracked = this.updateBoneHeadTracking(boneHead);
+    this.compensated.set(
+      tracked.x - recoil.x,
+      tracked.y - recoil.y,
+      tracked.z - recoil.z
+    );
+    dragTowardBoneHead(this.currentAim, this.compensated);
+    this.setCrosshair(this.currentAim);
+  }
 
   setCrosshair(vec3) {
-    console.log(`🎯 AimLock: ${vec3.x.toFixed(4)}, ${vec3.y.toFixed(4)}, ${vec3.z.toFixed(4)}`);
     if (typeof GameAPI !== "undefined" && GameAPI.setAim) {
       GameAPI.setAim(vec3.x, vec3.y, vec3.z);
     }
+    console.log(`🎯 Aimed at: ${vec3.x.toFixed(2)}, ${vec3.y.toFixed(2)}, ${vec3.z.toFixed(2)}`);
   }
 
   reset() {
     this.kalman.x.reset();
     this.kalman.y.reset();
     this.kalman.z.reset();
-    this.isFirstUpdate = true;
     this.currentAim.set(0, 0, 0);
-    this.velocity.set(0, 0, 0);
   }
 }
 
-// == Game Loop (setInterval fallback for Shadowrocket) ==
+// === Drag ngay lập tức đến Head ===
+function dragTowardBoneHead(currentAim, boneHead) {
+  return currentAim.set(boneHead.x, boneHead.y, boneHead.z);
+}
+
+// === Game Loop ===
 class GameLoop {
   constructor() {
     this.interval = null;
     this.fps = 120;
   }
-
   start(callback) {
     if (this.interval) return;
-    const frameTime = 1000 / this.fps;
-    this.interval = setInterval(callback, frameTime);
+    const ms = 1000 / this.fps;
+    this.interval = setInterval(callback, ms);
   }
-
   stop() {
     if (this.interval) {
       clearInterval(this.interval);
@@ -222,32 +191,50 @@ class GameLoop {
   }
 }
 
-// == Khởi chạy ==
+// === Lock Target Logic ===
+function findNearestEnemy(enemies, player) {
+  let minDist = Infinity;
+  let closest = null;
+  for (const enemy of enemies) {
+    if (!enemy || enemy.health <= 0) continue;
+    const dx = enemy.x - player.x;
+    const dy = enemy.y - player.y;
+    const dz = enemy.z - player.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+    if (distSq < minDist) {
+      minDist = distSq;
+      closest = enemy;
+    }
+  }
+  return closest;
+}
+
+// === Khởi động hệ thống ===
 const headOffset = new Vector3(-0.04089227, 0.00907892, 0.02748467);
-
-for (const enemy of enemies) {
-  const boneHead = new Vector3(
-    enemy.x + headOffset.x,
-    enemy.y + headOffset.y,
-    enemy.z + headOffset.z
-  );
-
-  
-
-// Snap instantly
-
-
-const recoil = new Vector3(0.0, 0.0, 0.0);
-
+const recoil = new Vector3(0, 0, 0);
 const aimSystem = new AimLockDragStable();
 const loop = new GameLoop();
-const GamePackages = {
-  GamePackage1: "com.dts.freefireth",
-  GamePackage2: "com.dts.freefiremax"
-};
+
+let lockedTarget = null;
+
 loop.start(() => {
+  if (typeof enemies === "undefined" || typeof localPlayer === "undefined") return;
+
+  // Nếu mục tiêu cũ chết hoặc không còn
+  if (!lockedTarget || lockedTarget.health <= 0) {
+    lockedTarget = findNearestEnemy(enemies, localPlayer);
+    aimSystem.reset(); // reset kalman
+  }
+
+  if (!lockedTarget) return;
+
+  // Tính tọa độ head
+  const boneHead = new Vector3(
+    lockedTarget.x + headOffset.x,
+    lockedTarget.y + headOffset.y,
+    lockedTarget.z + headOffset.z
+  );
+
   aimSystem.tick(boneHead, recoil);
 });
-
-// Dừng khi cần
-// loop.stop();
+ 
