@@ -168,20 +168,21 @@ class AimLockDragStable {
     return this.trackedHead;
   }
 
-  tick(boneHead, recoil = Vector3.zero()) {
-    if (!CrosshairDetector.isRed() && !CrosshairDetector.isHeadshot()) return;
+ tick(boneHead, recoil = Vector3.zero()) {
+  if (!CrosshairDetector.isRed() && !CrosshairDetector.isHeadshot()) return;
 
-    const trackedHead = this.updateBoneHeadTracking(boneHead);
+  const trackedHead = this.updateBoneHeadTracking(boneHead);
 
-    this.compensated.set(
-      trackedHead.x - recoil.x,
-      trackedHead.y - recoil.y,
-      trackedHead.z - recoil.z
-    );
+  this.compensated.set(
+    trackedHead.x - recoil.x,
+    trackedHead.y - recoil.y,
+    trackedHead.z - recoil.z
+  );
 
-    dragTowardBoneHead(this.currentAim, this.compensated, this.adaptiveStep);
-    this.setCrosshair(this.currentAim);
-  }
+  // Snap instantly
+  dragTowardBoneHead(this.currentAim, this.compensated);
+  this.setCrosshair(this.currentAim);
+}
 
   setCrosshair(vec3) {
     console.log(`🎯 AimLock: ${vec3.x.toFixed(4)}, ${vec3.y.toFixed(4)}, ${vec3.z.toFixed(4)}`);
@@ -231,7 +232,7 @@ const boneHead = new Vector3(
 );
 
 // Snap instantly
-dragTowardBoneHead(currentAim, boneHead);
+
 
 const recoil = new Vector3(0.0, 0.0, 0.0);
 
