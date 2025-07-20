@@ -232,7 +232,7 @@ const boneHead = new Vector3(
 
 // Snap instantly
 dragTowardBoneHead(currentAim, boneHead);
-const boneHead = new Vector3(-0.0456970781, -0.004478302, -0.0200432576);
+
 const recoil = new Vector3(0.0, 0.0, 0.0);
 
 const aimSystem = new AimLockDragStable();
