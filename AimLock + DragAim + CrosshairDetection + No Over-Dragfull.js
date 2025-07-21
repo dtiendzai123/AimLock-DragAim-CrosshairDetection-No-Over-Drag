@@ -116,6 +116,27 @@ function dragTowardBoneHead(currentAim, boneHead, maxStep = 0.05) {
 function dragTowardBoneHead(currentAim, boneHead) {
   return currentAim.set(boneHead.x, boneHead.y, boneHead.z);
 }
+class Quaternion {
+  constructor(x = 0, y = 0, z = 0, w = 1) {
+    this.x = x; this.y = y; this.z = z; this.w = w;
+  }
+
+  rotateVector(v) {
+    const x = v.x, y = v.y, z = v.z;
+    const qx = this.x, qy = this.y, qz = this.z, qw = this.w;
+
+    const ix =  qw * x + qy * z - qz * y;
+    const iy =  qw * y + qz * x - qx * z;
+    const iz =  qw * z + qx * y - qy * x;
+    const iw = -qx * x - qy * y - qz * z;
+
+    return new Vector3(
+      ix * qw + iw * -qx + iy * -qz - iz * -qy,
+      iy * qw + iw * -qy + iz * -qx - ix * -qz,
+      iz * qw + iw * -qz + ix * -qy - iy * -qx
+    );
+  }
+}
 // == AimLock Engine ==
 class AimLockDragStable {
   constructor() {
@@ -193,14 +214,51 @@ class GameLoop {
 
 // === Lock Target Logic ===
 function findNearestEnemy(enemies, player) {
+  function getBoneHeadTopPosition(enemy, baseOffset = { x: 0, y: 0.06, z: 0 }, headHeight = 0.1) {
+    const pos = {
+      x: enemy.x + baseOffset.x,
+      y: enemy.y + baseOffset.y,
+      z: enemy.z + baseOffset.z
+    };
+
+    const rx = enemy.rx ?? 0, ry = enemy.ry ?? 0, rz = enemy.rz ?? 0, rw = enemy.rw ?? 1;
+    const sx = enemy.sx ?? 1, sy = enemy.sy ?? 1, sz = enemy.sz ?? 1;
+
+    const qx = rx, qy = ry, qz = rz, qw = rw;
+
+    // Rotate vector (0,1,0) by quaternion
+    const up = { x: 0, y: 1, z: 0 };
+    const ix =  qw * up.x + qy * up.z - qz * up.y;
+    const iy =  qw * up.y + qz * up.x - qx * up.z;
+    const iz =  qw * up.z + qx * up.y - qy * up.x;
+    const iw = -qx * up.x - qy * up.y - qz * up.z;
+
+    const rotatedUp = {
+      x: (ix * qw + iw * -qx + iy * -qz - iz * -qy) * headHeight * sy,
+      y: (iy * qw + iw * -qy + iz * -qx - ix * -qz) * headHeight * sy,
+      z: (iz * qw + iw * -qz + ix * -qy - iy * -qx) * headHeight * sy
+    };
+
+    return {
+      x: pos.x + rotatedUp.x,
+      y: pos.y + rotatedUp.y,
+      z: pos.z + rotatedUp.z
+    };
+  }
+
   let minDist = Infinity;
   let closest = null;
   for (const enemy of enemies) {
     if (!enemy || enemy.health <= 0) continue;
-    const dx = enemy.x - player.x;
-    const dy = enemy.y - player.y;
-    const dz = enemy.z - player.z;
+
+    // Tính vị trí đỉnh đầu bone head
+    const head = getBoneHeadTopPosition(enemy);
+
+    const dx = head.x - player.x;
+    const dy = head.y - player.y;
+    const dz = head.z - player.z;
     const distSq = dx * dx + dy * dy + dz * dz;
+
     if (distSq < minDist) {
       minDist = distSq;
       closest = enemy;
@@ -229,11 +287,8 @@ loop.start(() => {
   if (!lockedTarget) return;
 
   // Tính tọa độ head
-  const boneHead = new Vector3(
-    lockedTarget.x + headOffset.x,
-    lockedTarget.y + headOffset.y,
-    lockedTarget.z + headOffset.z
-  );
+  // Tính tọa độ đầu (đã giới hạn đỉnh đầu thật)
+const boneHead = getBoneHeadTopPosition(lockedTarget);
 
   aimSystem.tick(boneHead, recoil);
 });
