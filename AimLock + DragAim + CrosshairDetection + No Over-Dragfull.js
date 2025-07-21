@@ -288,7 +288,8 @@ loop.start(() => {
 
   // Tính tọa độ head
   // Tính tọa độ đầu (đã giới hạn đỉnh đầu thật)
-const boneHead = getBoneHeadTopPosition(lockedTarget);
+const boneHeadPos = getBoneHeadTopPosition(lockedTarget);
+const boneHead = new Vector3(boneHeadPos.x, boneHeadPos.y, boneHeadPos.z);
 
   aimSystem.tick(boneHead, recoil);
 });
