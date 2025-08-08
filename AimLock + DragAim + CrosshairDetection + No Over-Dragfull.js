@@ -1,3 +1,7 @@
+let body = $response.body;
+
+// Nếu là JSON thì parse thử
+try { body = JSON.parse($response.body); } catch (e) {}
 // == Utility Functions ==
 const Utils = {
   clamp: (value, min, max) => Math.max(min, Math.min(max, value)),
@@ -713,3 +717,8 @@ const boneHead = new Vector3(boneHeadPos.x, boneHeadPos.y, boneHeadPos.z);
 
   aimSystem.tick(boneHead, recoil);
 });
+if (typeof body === "object") {
+  $done({ body: JSON.stringify(body) });
+} else {
+  $done({ body });
+}
